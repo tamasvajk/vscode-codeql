@@ -10,19 +10,19 @@ export type Listener<T> = (event: T) => void;
  * its events, while users of the object can listen to the stream.
  */
 export class EventStream<T> {
-    public listeners: Listener<T>[] = [];
+  public listeners: Listener<T>[] = [];
 
-    /** Calls all listeners with the given event. */
-    public fire(event: T) {
-        for (let listener of this.listeners) {
-            listener(event);
-        }
+  /** Calls all listeners with the given event. */
+  public fire(event: T) {
+    for (const listener of this.listeners) {
+      listener(event);
     }
+  }
 
-    /** Adds an event listener to be invoked when an event is fired. */
-    public listen(listener: Listener<T>) {
-        this.listeners.push(listener);
-    }
+  /** Adds an event listener to be invoked when an event is fired. */
+  public listen(listener: Listener<T>) {
+    this.listeners.push(listener);
+  }
 }
 
 /**
@@ -36,29 +36,29 @@ export class EventStream<T> {
  * The `.get` method triggers all input events and then returns the underlying value.
  */
 export class SyncStreamBuilder<T> {
-    constructor(
-        private readonly fire: () => void,
-        private readonly value: T) {}
+  constructor(
+    private readonly fire: () => void,
+    private readonly value: T) { }
 
-    /**
-     * Adds a consumer of the current stream value and returns the result boxed in a stream builder.
-     */
-    then<R>(transformer: (t: T) => R): SyncStreamBuilder<R> {
-        return new SyncStreamBuilder(this.fire, transformer(this.value));
-    }
+  /**
+   * Adds a consumer of the current stream value and returns the result boxed in a stream builder.
+   */
+  then<R>(transformer: (t: T) => R): SyncStreamBuilder<R> {
+    return new SyncStreamBuilder(this.fire, transformer(this.value));
+  }
 
-    /**
-     * Adds a consumer of the current stream value and returns the result boxed in a stream builder.
-     */
-    thenNew<R>(transformer: new (t: T) => R): SyncStreamBuilder<R> {
-        return new SyncStreamBuilder(this.fire, new transformer(this.value));
-    }
+  /**
+   * Adds a consumer of the current stream value and returns the result boxed in a stream builder.
+   */
+  thenNew<R>(transformer: new (t: T) => R): SyncStreamBuilder<R> {
+    return new SyncStreamBuilder(this.fire, new transformer(this.value));
+  }
 
-    /** Fires all input events and then returns the boxed value. */
-    get(): T {
-        this.fire();
-        return this.value;
-    }
+  /** Fires all input events and then returns the boxed value. */
+  get(): T {
+    this.fire();
+    return this.value;
+  }
 }
 
 /**
@@ -72,30 +72,30 @@ export class SyncStreamBuilder<T> {
  * The `.get` returns a promise for the underlying value when it is ready.
  */
 export class AsyncStreamBuilder<T> {
-    constructor(
-        private readonly end: EventStream<any>,
-        private readonly value: T) {}
+  constructor(
+    private readonly end: EventStream<any>,
+    private readonly value: T) { }
 
-    /**
-     * Adds a consumer of the current stream value and returns the result boxed in a stream builder.
-     */
-    then<R>(transformer: (t: T) => R): AsyncStreamBuilder<R> {
-        return new AsyncStreamBuilder(this.end, transformer(this.value));
-    }
+  /**
+   * Adds a consumer of the current stream value and returns the result boxed in a stream builder.
+   */
+  then<R>(transformer: (t: T) => R): AsyncStreamBuilder<R> {
+    return new AsyncStreamBuilder(this.end, transformer(this.value));
+  }
 
-    /**
-     * Adds a consumer of the current stream value and returns the result boxed in a stream builder.
-     */
-    thenNew<R>(transformer: new (t: T) => R): AsyncStreamBuilder<R> {
-        return new AsyncStreamBuilder(this.end, new transformer(this.value));
-    }
+  /**
+   * Adds a consumer of the current stream value and returns the result boxed in a stream builder.
+   */
+  thenNew<R>(transformer: new (t: T) => R): AsyncStreamBuilder<R> {
+    return new AsyncStreamBuilder(this.end, new transformer(this.value));
+  }
 
-    /** Waits for the input stream to end, then returns the boxed value. */
-    get(): Promise<T> {
-        return new Promise<T>(resolve => {
-            this.end.listen(() => {
-                resolve(this.value);
-            });
-        });
-    }
+  /** Waits for the input stream to end, then returns the boxed value. */
+  get(): Promise<T> {
+    return new Promise<T>(resolve => {
+      this.end.listen(() => {
+        resolve(this.value);
+      });
+    });
+  }
 }
