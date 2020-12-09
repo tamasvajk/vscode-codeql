@@ -28,6 +28,8 @@ class StructuredLogBuilder {
       }
       const stage: Stage = {
         stageNumber: stageNode.stageNumber,
+        stageTime: stageNode.stageTime,
+        numTuples: stageNode.numTuples,
         predicates: stageNode.queryPredicates.map(name => ({ name, evaluations: [] })),
         endLine: stageNode.endLine
       };
@@ -51,6 +53,8 @@ interface StageEndedEvent {
   queryPredicates: string[];
   queryName: string;
   stageNumber: number;
+  stageTime: number;
+  numTuples: number;
   startLine?: SourceLine;
   endLine: SourceLine;
 }
@@ -74,12 +78,14 @@ class Parser implements LogStream {
       }
       // Process the row data
       const rowEntries = row.split(',');
-      const [queryPredicates, queryName, stageNumber] = [rowEntries[1].split(' '), rowEntries[2], Number.parseInt(rowEntries[3])];
+      const [, queryPredicates, queryName, stageNumber, , stageTime, numTuples,] = rowEntries;
       const endLine: SourceLine = { text: wholeLine, lineNumber: matchEvent.lineNumber || 0 };
       this.onStageEnded.fire({
         queryName,
-        queryPredicates,
-        stageNumber,
+        queryPredicates: queryPredicates.split(' '),
+        stageNumber: Number.parseInt(stageNumber),
+        stageTime: Number.parseFloat(stageTime),
+        numTuples: Number.parseInt(numTuples),
         endLine
       });
     });

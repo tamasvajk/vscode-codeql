@@ -18,6 +18,8 @@ export interface Query {
 export interface Stage {
   predicates: RaPredicate[];
   stageNumber: number;
+  stageTime: number;
+  numTuples: number;
   startLine?: SourceLine;      // match: [STAGING] Evaluate program stage for predicate(s) ...
   endLine?: SourceLine;        // match: CSV_IMB_QUERIES ...
 }

@@ -54,7 +54,7 @@ function convertLogFile(logFile: LogFile, logFilePath: string): StructuredLogIte
   }
   function convertStage(stage: Stage): StructuredLogItem {
     const item: StructuredLogItem = {
-      label: 'Stage ' + stage.stageNumber,
+      label: `Stage ${stage.stageNumber} - ${stage.numTuples} tuples in ${stage.stageTime}s`,
       children: []
     };
     for (const predicate of stage.predicates) {
