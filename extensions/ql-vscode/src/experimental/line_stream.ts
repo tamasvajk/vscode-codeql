@@ -25,6 +25,7 @@ export class LineStream {
         }
       }
     }
+    // TODO: Consider sending line numbers to the callbacks, so they can be consumed.
     ++this.lineNumber;
   }
 

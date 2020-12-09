@@ -5,19 +5,21 @@ export interface LogFile {
 }
 
 export interface Query {
+  name: string;
   stages: Stage[];
-  results: RaPredicate[];
-  raPredicates: RaPredicate[];    // dict: name -> predicate ?
-  dilPredicates: DilPredicate[];  // dict: name -> predicate ?
+  results?: RaPredicate[];
+  raPredicates?: RaPredicate[];    // dict: name -> predicate ?
+  dilPredicates?: DilPredicate[];  // dict: name -> predicate ?
 
-  startLine: SourceLine;          // match: Start query execution
-  endLine: SourceLine;            // match: CSV_IMB_QUERIES: Query,
+  startLine?: SourceLine;          // match: Start query execution
+  endLine?: SourceLine;            // match: CSV_IMB_QUERIES: Query,
 }
 
 export interface Stage {
   predicates: RaPredicate[];
-  startLine: SourceLine;      // match: [STAGING] Evaluate program stage for predicate(s) ...
-  endLine: SourceLine;        // match: CSV_IMB_QUERIES ...
+  stageNumber: number;
+  startLine?: SourceLine;      // match: [STAGING] Evaluate program stage for predicate(s) ...
+  endLine?: SourceLine;        // match: CSV_IMB_QUERIES ...
 }
 
 export interface RaPredicate {
@@ -26,9 +28,9 @@ export interface RaPredicate {
   evaluations: Evaluation[];
   // delta: number; ?
   // isExtensional: boolean; ?
-  rowCount: number;
-  evaluationTime: number;  // 999 from match: Xss.ql-4:AST::ASTNode::getTopLevel#ff ................... 999ms (executed 168 times)
-  executionCount: number;  // 168, does this match evaluations.length?
+  rowCount?: number;
+  evaluationTime?: number;  // 999 from match: Xss.ql-4:AST::ASTNode::getTopLevel#ff ................... 999ms (executed 168 times)
+  executionCount?: number;  // 168, does this match evaluations.length?
 }
 
 // ??? do we need this?
