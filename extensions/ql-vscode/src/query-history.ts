@@ -9,6 +9,7 @@ import { logger } from './logging';
 import { URLSearchParams } from 'url';
 import { QueryServerClient } from './queryserver-client';
 import { DisposableObject } from './vscode-utils/disposable-object';
+import { StructuredQueryLog } from './experimental/query-history';
 
 /**
  * query-history.ts
@@ -250,6 +251,12 @@ export class QueryHistoryManager extends DisposableObject {
     );
     this.push(
       helpers.commandRunner(
+        'codeQLQueryHistory.showStructuredQueryLog',
+        this.handleShowStructuredQueryLog.bind(this)
+      )
+    );
+    this.push(
+      helpers.commandRunner(
         'codeQLQueryHistory.showQueryText',
         this.handleShowQueryText.bind(this)
       )
@@ -432,6 +439,22 @@ export class QueryHistoryManager extends DisposableObject {
     }
   }
 
+  async handleShowStructuredQueryLog(
+    singleItem: CompletedQuery,
+    multiSelect: CompletedQuery[]
+  ) {
+    if (!this.assertSingleQuery(multiSelect)) {
+      return;
+    }
+
+    if (singleItem.logFileLocation) {
+      await this.tryOpenStructuredLog(singleItem.logFileLocation);
+    } else {
+      helpers.showAndLogWarningMessage('No log file available');
+    }
+  }
+
+
   async handleShowQueryText(
     singleItem: CompletedQuery,
     multiSelect: CompletedQuery[]
@@ -534,6 +557,16 @@ export class QueryHistoryManager extends DisposableObject {
         this.treeDataProvider.refresh();
         this.treeView.reveal(current);
       }
+    }
+  }
+
+  private async tryOpenStructuredLog(fileLocation: string) {
+    try {
+      await new StructuredQueryLog().readFile(fileLocation);
+    } catch (e) {
+      helpers.showAndLogErrorMessage(`Could not open file ${fileLocation}`);
+      logger.log(e.message);
+      logger.log(e.stack);
     }
   }
 
