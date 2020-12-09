@@ -34,7 +34,8 @@ class StructuredLogBuilder {
     }
     const queries: Query[] = [];
     for (const [queryName, stages] of queryToStages.entries()) {
-      queries.push({ name: queryName, stages });
+      // Stages are likely to be in order, but sort them to be consistent.
+      queries.push({ name: queryName, stages: stages.sort((s1, s2) => s1.stageNumber - s2.stageNumber) });
     }
     return { queries };
   }
