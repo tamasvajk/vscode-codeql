@@ -26,6 +26,7 @@
     "onView:codeQLDatabases",
     "onView:codeQLQueryHistory",
     "onView:codeQLAstViewer",
+    "onView:codeQLStructuredLogViewer",
     "onView:test-explorer",
     "onCommand:codeQL.checkForUpdatesToCLI",
     "onCommand:codeQLDatabases.chooseDatabaseFolder",
@@ -385,6 +386,18 @@
           "light": "media/light/clear-all.svg",
           "dark": "media/dark/clear-all.svg"
         }
+      },
+      {
+        "command": "codeQLStructuredLogViewer.gotoLog",
+        "title": "Go To Log"
+      },
+      {
+        "command": "codeQLStructuredLogViewer.clear",
+        "title": "Clear Structured Log",
+        "icon": {
+          "light": "media/light/clear-all.svg",
+          "dark": "media/dark/clear-all.svg"
+        }
       }
     ],
     "menus": {
@@ -437,6 +450,11 @@
         {
           "command": "codeQLAstViewer.clear",
           "when": "view == codeQLAstViewer",
+          "group": "navigation"
+        },
+        {
+          "command": "codeQLStructuredLogViewer.clear",
+          "when": "view == codeQLStructuredLogViewer",
           "group": "navigation"
         }
       ],
@@ -656,6 +674,14 @@
           "when": "false"
         },
         {
+          "command": "codeQLStructuredLogViewer.gotoLog",
+          "when": "false"
+        },
+        {
+          "command": "codeQLStructuredLogViewer.clear",
+          "when": "false"
+        },
+        {
           "command": "codeQLTests.acceptOutput",
           "when": "false"
         },
@@ -697,6 +723,10 @@
         {
           "id": "codeQLAstViewer",
           "name": "AST Viewer"
+        },
+        {
+          "id": "codeQLStructuredLogViewer",
+          "name": "Structured Log Viewer"
         }
       ]
     },

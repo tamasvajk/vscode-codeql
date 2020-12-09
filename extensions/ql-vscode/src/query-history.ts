@@ -10,6 +10,7 @@ import { URLSearchParams } from 'url';
 import { QueryServerClient } from './queryserver-client';
 import { DisposableObject } from './vscode-utils/disposable-object';
 import { StructuredQueryLog } from './experimental/query-history';
+import { LogFile } from './experimental/dataModel';
 
 /**
  * query-history.ts
@@ -184,6 +185,7 @@ export class QueryHistoryManager extends DisposableObject {
     extensionPath: string,
     private queryHistoryConfigListener: QueryHistoryConfig,
     private selectedCallback: (item: CompletedQuery) => Promise<void>,
+    private showStructuredLogCallback: (logFile: LogFile, logFileLocation: string) => Promise<void>,
     private doCompareCallback: (
       from: CompletedQuery,
       to: CompletedQuery
@@ -564,6 +566,10 @@ export class QueryHistoryManager extends DisposableObject {
     try {
       const logFile = await new StructuredQueryLog().readFile(fileLocation);
       logger.log(`Opened structured log file ${fileLocation} with ${logFile.queries.length} query entries`);
+      if (this.showStructuredLogCallback !== undefined) {
+        const sc = this.showStructuredLogCallback;
+        await sc(logFile, fileLocation);
+      }
     } catch (e) {
       helpers.showAndLogErrorMessage(`Could not open file ${fileLocation}`);
       logger.log(e.message);

@@ -59,6 +59,8 @@ import { QLTestAdapterFactory } from './test-adapter';
 import { TestUIService } from './test-ui';
 import { CompareInterfaceManager } from './compare/compare-interface';
 import { gatherQlFiles } from './pure/files';
+import { StructuredLogViewer } from './structuredLogViewer';
+import { LogFile } from './experimental/dataModel';
 
 /**
  * extension.ts
@@ -376,17 +378,24 @@ async function activateWithInstalledDistribution(
   databaseUI.init();
   ctx.subscriptions.push(databaseUI);
 
+  logger.log('Initializing structured log viewer');
+  const structuredLogViewer = new StructuredLogViewer();
+  ctx.subscriptions.push(structuredLogViewer);
+
   logger.log('Initializing query history manager.');
   const queryHistoryConfigurationListener = new QueryHistoryConfigListener();
   ctx.subscriptions.push(queryHistoryConfigurationListener);
   const showResults = async (item: CompletedQuery) =>
     showResultsForCompletedQuery(item, WebviewReveal.Forced);
+  const showStructuredLog = async (logFile: LogFile, logFileLocation: string) =>
+    structuredLogViewer.setCurrentLog(logFile, logFileLocation);
 
   const qhm = new QueryHistoryManager(
     qs,
     ctx.extensionPath,
     queryHistoryConfigurationListener,
     showResults,
+    showStructuredLog,
     async (from: CompletedQuery, to: CompletedQuery) =>
       showResultsForComparison(from, to),
   );
