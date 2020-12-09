@@ -562,7 +562,8 @@ export class QueryHistoryManager extends DisposableObject {
 
   private async tryOpenStructuredLog(fileLocation: string) {
     try {
-      await new StructuredQueryLog().readFile(fileLocation);
+      const logFile = await new StructuredQueryLog().readFile(fileLocation);
+      logger.log(`Opened structured log file ${fileLocation} with ${logFile.queries.length} query entries`);
     } catch (e) {
       helpers.showAndLogErrorMessage(`Could not open file ${fileLocation}`);
       logger.log(e.message);

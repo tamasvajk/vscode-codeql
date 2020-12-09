@@ -4,7 +4,7 @@ import { EventStream } from './event_stream';
 import { LineStream, streamLinesAsync } from './line_stream';
 
 export class StructuredQueryLog {
-  public async readFile(fileLocation: string) {
+  public async readFile(fileLocation: string): Promise<LogFile> {
     const stream = fs.createReadStream(fileLocation);
     return streamLinesAsync(stream).thenNew(Parser).get().then(p => p.getLogFile());
   }
@@ -25,7 +25,7 @@ class Parser implements LogStream {
   constructor(public readonly input: LineStream) {
     this.end = input.end;
 
-    this.logFile = {queries : []};
+    this.logFile = { queries: [] };
 
     input.on(/CSV_IMB_QUERIES:\s*(.*)/, ([_, row]) => {
       console.log(row);
