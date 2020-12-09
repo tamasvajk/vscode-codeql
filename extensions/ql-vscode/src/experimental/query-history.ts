@@ -1,5 +1,5 @@
 import * as fs from 'fs-extra';
-import { LogFile, Query, Stage } from './dataModel';
+import { LogFile, Query, SourceLine, Stage } from './dataModel';
 import { EventStream } from './event_stream';
 import { LineStream, streamLinesAsync } from './line_stream';
 
@@ -28,7 +28,8 @@ class StructuredLogBuilder {
       }
       const stage: Stage = {
         stageNumber: stageNode.stageNumber,
-        predicates: stageNode.queryPredicates.map(name => ({ name, evaluations: [] }))
+        predicates: stageNode.queryPredicates.map(name => ({ name, evaluations: [] })),
+        endLine: stageNode.endLine
       };
       queryToStages.get(stageNode.queryName)!.push(stage);
     }
@@ -50,6 +51,8 @@ interface StageEndedEvent {
   queryPredicates: string[];
   queryName: string;
   stageNumber: number;
+  startLine?: SourceLine;
+  endLine: SourceLine;
 }
 
 class Parser implements LogStream {
@@ -60,7 +63,8 @@ class Parser implements LogStream {
     this.end = input.end;
 
     let seenCsvImbQueriesHeader = false;
-    input.on(/CSV_IMB_QUERIES:\s*(.*)/, ([_, row]) => {
+    input.on(/CSV_IMB_QUERIES:\s*(.*)/, (matchEvent) => {
+      const [wholeLine, row] = matchEvent.match;
       console.log(row);
       // The first occurrence is the header
       // Query type,Query predicate,Query name,Stage,Success,Time,Number of results,Cumulative time in query
@@ -71,10 +75,12 @@ class Parser implements LogStream {
       // Process the row data
       const rowEntries = row.split(',');
       const [queryPredicates, queryName, stageNumber] = [rowEntries[1].split(' '), rowEntries[2], Number.parseInt(rowEntries[3])];
+      const endLine: SourceLine = { text: wholeLine, lineNumber: matchEvent.lineNumber || 0 };
       this.onStageEnded.fire({
         queryName,
         queryPredicates,
-        stageNumber
+        stageNumber,
+        endLine
       });
     });
   }

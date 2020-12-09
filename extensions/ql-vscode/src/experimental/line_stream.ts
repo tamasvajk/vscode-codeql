@@ -14,19 +14,18 @@ export class LineStream {
 
   /** Adds a line and immediately invokes all matching event handlers. */
   addLine(line: string) {
+    ++this.lineNumber;
     for (const matcher of this.matchers) {
       const match = matcher.pattern.exec(line);
       if (match != null) {
-        matcher.callback(match);
+        matcher.callback({ match, lineNumber: this.lineNumber });
       } else {
         const { negativeCallback } = matcher;
         if (negativeCallback != null) {
-          negativeCallback(line);
+          negativeCallback({ line, lineNumber: this.lineNumber });
         }
       }
     }
-    // TODO: Consider sending line numbers to the callbacks, so they can be consumed.
-    ++this.lineNumber;
   }
 
   addLines(lines: string[]): this {
@@ -51,16 +50,26 @@ export class LineStream {
    * Listens for lines matching `pattern` and invokes `callback` on a match,
    * and `negativeCallback` (if provided) for any line that does not match.
    */
-  on(pattern: RegExp, callback: Listener<RegExpMatchArray>, negativeCallback?: Listener<string>): this {
+  on(pattern: RegExp, callback: Listener<MatchEvent>, negativeCallback?: Listener<NegativeMatchEvent>): this {
     this.matchers.push({ pattern, callback, negativeCallback });
     return this;
   }
 }
 
+interface MatchEvent {
+  match: RegExpMatchArray;
+  lineNumber?: number;
+}
+
+interface NegativeMatchEvent {
+  line: string;
+  lineNumber?: number;
+}
+
 interface Matcher {
   pattern: RegExp;
-  callback: Listener<RegExpMatchArray>;
-  negativeCallback: undefined | Listener<string>;
+  callback: Listener<MatchEvent>;
+  negativeCallback?: Listener<NegativeMatchEvent>;
 }
 
 /** Creates a `LineStream` and feeds it the given text once listeners have been added. */
