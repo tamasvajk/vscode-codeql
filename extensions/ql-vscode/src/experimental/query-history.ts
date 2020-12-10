@@ -28,13 +28,13 @@ class StructuredLogBuilder {
   }
 
   private onPredicateSize(event: PredicateSizeEvent) {
+    if (!this.predicates.has(event.name)) {
+      this.predicates.set(event.name, { name: event.name, evaluations: [] });
+    }
     // Only update if we receive a tuple count.
     // We don't want a later cache hit line (without counts) to overwrite
     // tuple counts that were previously recorded.
     if (event.numTuples !== undefined) {
-      if (!this.predicates.has(event.name)) {
-        this.predicates.set(event.name, { name: event.name, evaluations: [] });
-      }
       this.predicates.get(event.name)!.rowCount = event.numTuples;
     }
   }
@@ -50,7 +50,7 @@ class StructuredLogBuilder {
       predicates: stageNode.queryPredicates.map(name => {
         var pred = this.predicates.get(name);
         if (!pred) {
-          console.warn(`Couldn't find predicate ${name}`);
+          console.error(`Couldn't find predicate ${name}`);
           pred = { name, evaluations: [] };
         }
         return pred;
@@ -265,6 +265,7 @@ export class Parser implements LogStream {
     };
     // Cache hit log lines don't have the tuple counts anymore.
     input.on(/Found relation ([\w#:]+)\/(?:\d+)@\w+/, parseRelationWithoutSize);
+    input.on(/Cache hit for relation ([\w#:]+)\/(?:\d+)@\w+/, parseRelationWithoutSize);
 
     // Tuple counts for each step within a pipeline
     // 963     ~0%     {1} r2 = JOIN r1 WITH stmts_10#join_rhs AS R ON FIRST 1 OUTPUT R.<1> 'stmt'
