@@ -18,6 +18,7 @@ import { LogFile, PipelineEvaluation, PipelineStep, Query, RaPredicate, Stage } 
 
 export interface StructuredLogItem {
   label?: string;
+  description?: string;
   location?: Location;
   children: ChildStructuredLogItem[];
 }
@@ -84,7 +85,8 @@ function convertLogFile(logFile: LogFile, logFilePath: string): StructuredLogIte
   }
   function convertPipelineStep(step: PipelineStep): StructuredLogItem {
     const item: StructuredLogItem = {
-      label: step.body + getTupleCountLabelSuffix(step.tupleCount),
+      label: `(${step.tupleCount} tuples) r${step.target}`,
+      description: `= ${step.body}`,
       children: []
     };
     return item;
@@ -133,9 +135,9 @@ class StructuredLogViewerDataProvider extends DisposableObject implements TreeDa
       : TreeItemCollapsibleState.None;
     const treeItem = new TreeItem(item.label || '', state);
     // TODO add more detail to tree items
-    // treeItem.description = line ? `Line ${line}` : '';
+    treeItem.description = item.description;
     // treeItem.id = String(item.id);
-    // treeItem.tooltip = `${treeItem.description} ${treeItem.label}`;
+    treeItem.tooltip = `${treeItem.label} ${treeItem.description || ''}`;
     treeItem.command = {
       command: 'codeQLStructuredLogViewer.gotoLog',
       title: 'Go To Log',
