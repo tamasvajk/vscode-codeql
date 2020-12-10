@@ -65,19 +65,22 @@ function convertLogFile(logFile: LogFile, logFilePath: string): StructuredLogIte
       label: predicate.name + getTupleCountLabelSuffix(predicate.rowCount),
       children: []
     };
-    // If there is only a single pipeline evaluation, point directly to its steps as the children of this node.
-    // This avoids an unnecessary intermediate node.
-    if (predicate.evaluations.length === 1) {
+
+    if (predicate.evaluations.length === 0) {
+      item.label! += ' (from cache)';
+    } else if (predicate.evaluations.length === 1) {
+      // If there is only a single pipeline evaluation, point directly to its steps as the children of this node.
+      // This avoids an unnecessary intermediate node.
       const evaluation = predicate.evaluations[0];
       evaluation.steps.forEach(step => addChild(item, convertPipelineStep(step)));
     } else {
-      predicate.evaluations.forEach(evaluation => addChild(item, convertPipelineEvaluation(predicate.name, evaluation)));
+      predicate.evaluations.forEach((evaluation, index) => addChild(item, convertPipelineEvaluation(`#${index}`, evaluation)));
     }
     return item;
   }
-  function convertPipelineEvaluation(predicateName: string, evaluation: PipelineEvaluation): StructuredLogItem {
+  function convertPipelineEvaluation(label: string, evaluation: PipelineEvaluation): StructuredLogItem {
     const item: StructuredLogItem = {
-      label: predicateName,
+      label: label,
       children: []
     };
     evaluation.steps.forEach(step => addChild(item, convertPipelineStep(step)));
@@ -89,6 +92,7 @@ function convertLogFile(logFile: LogFile, logFilePath: string): StructuredLogIte
       description: `= ${step.body}`,
       children: []
     };
+    // step.subPredicates.forEach(predicate => addChild(item, convertPredicate(predicate)));
     return item;
   }
 }
