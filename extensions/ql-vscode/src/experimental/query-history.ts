@@ -136,10 +136,11 @@ class Parser implements LogStream {
       const rowEntries = row.split(',');
       const [entryType, queryPredicates, queryName, stageNumber, , stageTime, numTuples,] = rowEntries;
       if (entryType.toLowerCase() === 'query') {
-        console.log(`Found query completion on line ${lineNumber}`, row);
-        return;
+        // TODO we don't have an accurate start line for the final stage
+        console.log(`Found final stage and query completion on line ${lineNumber}`, row);
+      } else {
+        console.log(`Found stage completion on line ${lineNumber} ${stageStartLine ? 'with' : 'without'} a start line`, row);
       }
-      console.log(`Found stage completion on line ${lineNumber} ${stageStartLine ? 'with' : 'without'} a start line`, row);
       const startLine = stageStartLine;
       stageStartLine = undefined;
 
