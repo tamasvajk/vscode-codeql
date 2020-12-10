@@ -64,7 +64,14 @@ function convertLogFile(logFile: LogFile, logFilePath: string): StructuredLogIte
       label: predicate.name + getTupleCountLabelSuffix(predicate.rowCount),
       children: []
     };
-    predicate.evaluations.forEach(evaluation => addChild(item, convertPipelineEvaluation(evaluation)));
+    // If there is only a single pipeline evaluation, point directly to its steps as the children of this node.
+    // This avoids an unnecessary intermediate node.
+    if (predicate.evaluations.length === 1) {
+      const evaluation = predicate.evaluations[0];
+      evaluation.steps.forEach(step => addChild(item, convertPipelineStep(step)));
+    } else {
+      predicate.evaluations.forEach(evaluation => addChild(item, convertPipelineEvaluation(evaluation)));
+    }
     return item;
   }
   function convertPipelineEvaluation(evaluation: PipelineEvaluation): StructuredLogItem {
