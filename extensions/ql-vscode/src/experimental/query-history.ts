@@ -17,7 +17,7 @@ class StructuredLogBuilder {
   constructor(input: Parser) {
     input.onPipeline.listen(this.onPipeline.bind(this));
     input.onPredicateCompletion.listen(this.onPredicateSize.bind(this));
-    input.onPredicateExecutionTime.listen(this.onPredicateExecutionTime.bind(this));
+    input.onPredicateEvaluated.listen(this.onPredicateEvaluated.bind(this));
     input.onStageEnded.listen(this.onStageEnded.bind(this));
   }
 
@@ -28,11 +28,13 @@ class StructuredLogBuilder {
     this.predicates.get(event.predicateName)!.evaluations.push(event);
   }
 
-  private onPredicateExecutionTime(event: PredicateExecTimeEvent) {
+  private onPredicateEvaluated(event: PredicateEvaluatedEvent) {
     if (!this.predicates.has(event.name)) {
       this.predicates.set(event.name, { name: event.name, evaluations: [] });
     }
-    this.predicates.get(event.name)!.evaluationTime = event.executionTime;
+    const predicate = this.predicates.get(event.name)!
+    predicate.evaluationTime = event.evaluationTime;
+    predicate.evaluationCount = event.evaluationCount;
   }
 
   private onPredicateSize(event: PredicateSizeEvent) {
@@ -137,9 +139,10 @@ interface PredicateSizeEvent {
   numTuples?: number;
 }
 
-interface PredicateExecTimeEvent {
+interface PredicateEvaluatedEvent {
   name: string;
-  executionTime: number;
+  evaluationTime: number;
+  evaluationCount?: number;
 }
 
 export interface PipelineEvaluationEvent {
@@ -154,7 +157,7 @@ export class Parser implements LogStream {
   public readonly onQueryEnded = new EventStream<void>();
   public readonly onPipeline = new EventStream<PipelineEvaluationEvent>();
   public readonly onPredicateCompletion = new EventStream<PredicateSizeEvent>();
-  public readonly onPredicateExecutionTime = new EventStream<PredicateExecTimeEvent>();
+  public readonly onPredicateEvaluated = new EventStream<PredicateEvaluatedEvent>();
   public readonly onStageEnded = new EventStream<StageEndedEvent>();
   public readonly end: EventStream<void>;
 
@@ -315,12 +318,13 @@ export class Parser implements LogStream {
       }
     });
 
-    input.on(/^\t([A-Za-z.0-9]+)-(\d+):(.*) \.+ (?:(\d+(?:\.\d+)?)h)?(?:(\d+(?:\.\d+)?)m)?(?:(\d+(?:\.\d+)?)s)?(?:(\d+(?:\.\d+)?)ms)?\b.*$/, ({ match }) => {
-      const [, query, stageStr, name, hStr, mStr, sStr, msStr] = match;
+    input.on(/^\t([A-Za-z.0-9]+)-(\d+):(.*) \.+ (?:(\d+(?:\.\d+)?)h)?(?:(\d+(?:\.\d+)?)m)?(?:(\d+(?:\.\d+)?)s)?(?:(\d+(?:\.\d+)?)ms)?\b(?: \(.*?(\d+).*\))?$/, ({ match }) => {
+      const [, query, stageStr, name, hStr, mStr, sStr, msStr, evalCountStr] = match;
       console.log(`Saw relation ${name} execution time`);
-      this.onPredicateExecutionTime.fire({
+      this.onPredicateEvaluated.fire({
         name: rewritePredicateName(name),
-        executionTime: this.getExecMs(hStr, mStr, sStr, msStr)
+        evaluationTime: this.getExecMs(hStr, mStr, sStr, msStr),
+        evaluationCount: evalCountStr ? Number(evalCountStr) : undefined
       });
     });
   }

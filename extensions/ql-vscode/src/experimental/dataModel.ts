@@ -31,8 +31,10 @@ export interface RaPredicate {
   // delta: number; ?
   // isExtensional: boolean; ?
   rowCount?: number;
-  evaluationTime?: number;  // 999 from match: Xss.ql-4:AST::ASTNode::getTopLevel#ff ................... 999ms (executed 168 times)
-  executionCount?: number;  // 168, does this match evaluations.length?
+  evaluationTime?: number;  // 999 from match:
+  // Xss.ql-4:AST::ASTNode::getTopLevel#ff ................... 999ms (executed 168 times) or
+  // Xss.ql-4:AST::ASTNode::getTopLevel#ff ................... 999ms (168 evaluations with max 369ms in ...)
+  evaluationCount?: number;  // 168, does this match evaluations.length?
 }
 
 // // ??? do we need this?
