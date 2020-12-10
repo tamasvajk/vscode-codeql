@@ -157,7 +157,6 @@ export class Parser implements LogStream {
   constructor(public readonly input: LineStream) {
     this.end = input.end;
 
-    let seenCsvImbQueriesHeader = false;
     let stageStartLine: SourceLine | undefined = undefined;
     let queryStartLine: SourceLine | undefined = undefined;
 
@@ -177,10 +176,8 @@ export class Parser implements LogStream {
     // End of a stage (or query, but ignore those for now)
     input.on(/CSV_IMB_QUERIES:\s*(.*)/, ({ match, lineNumber }) => {
       const [wholeLine, row] = match;
-      // The first occurrence is the header
-      // Query type,Query predicate,Query name,Stage,Success,Time,Number of results,Cumulative time in query
-      if (!seenCsvImbQueriesHeader) {
-        seenCsvImbQueriesHeader = true;
+      // The first occurrence is usually the header, but not always, so matching on the expected header instead:
+      if (row === 'Query type,Query predicate,Query name,Stage,Success,Time,Number of results,Cumulative time in query') {
         return;
       }
 
