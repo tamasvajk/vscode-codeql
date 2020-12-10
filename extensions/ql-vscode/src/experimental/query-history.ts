@@ -14,9 +14,10 @@ class StructuredLogBuilder {
   private queries: Query[] = [];
   private queryToStages: Map<string, Stage[]> = new Map<string, Stage[]>();
   private predicates: Map<string, RaPredicate> = new Map<string, RaPredicate>();
-  constructor(input: LogStream) {
+  constructor(input: Parser) {
     input.onPipeline.listen(this.onPipeline.bind(this));
     input.onPredicateCompletion.listen(this.onPredicateSize.bind(this));
+    input.onPredicateExecutionTime.listen(this.onPredicateExecutionTime.bind(this));
     input.onStageEnded.listen(this.onStageEnded.bind(this));
   }
 
@@ -25,6 +26,13 @@ class StructuredLogBuilder {
       this.predicates.set(event.predicateName, { name: event.predicateName, evaluations: [] });
     }
     this.predicates.get(event.predicateName)!.evaluations.push(event);
+  }
+
+  private onPredicateExecutionTime(event: PredicateExecTimeEvent) {
+    if (!this.predicates.has(event.name)) {
+      this.predicates.set(event.name, { name: event.name, evaluations: [] });
+    }
+    this.predicates.get(event.name)!.evaluationTime = event.executionTime;
   }
 
   private onPredicateSize(event: PredicateSizeEvent) {
@@ -129,6 +137,11 @@ interface PredicateSizeEvent {
   numTuples?: number;
 }
 
+interface PredicateExecTimeEvent {
+  name: string;
+  executionTime: number;
+}
+
 export interface PipelineEvaluationEvent {
   predicateName: string;
   steps: PipelineStep[];
@@ -141,6 +154,7 @@ export class Parser implements LogStream {
   public readonly onQueryEnded = new EventStream<void>();
   public readonly onPipeline = new EventStream<PipelineEvaluationEvent>();
   public readonly onPredicateCompletion = new EventStream<PredicateSizeEvent>();
+  public readonly onPredicateExecutionTime = new EventStream<PredicateExecTimeEvent>();
   public readonly onStageEnded = new EventStream<StageEndedEvent>();
   public readonly end: EventStream<void>;
 
@@ -257,7 +271,7 @@ export class Parser implements LogStream {
       const [, name] = input.match;
       console.log(`Saw complete relation ${name} without a final tuple count`);
       this.onPredicateCompletion.fire({
-        name
+        name: rewritePredicateName(name)
       });
     };
     // Cache hit log lines don't have the tuple counts anymore.
@@ -299,8 +313,33 @@ export class Parser implements LogStream {
         // currentRawLines = [];
         currentPredicateName = undefined;
       }
+    });
+
+    input.on(/^\t([A-Za-z.0-9]+)-(\d+):(.*) \.+ (?:(\d+(?:\.\d+)?)h)?(?:(\d+(?:\.\d+)?)m)?(?:(\d+(?:\.\d+)?)s)?(?:(\d+(?:\.\d+)?)ms)?\b.*$/, ({ match }) => {
+      const [, query, stageStr, name, hStr, mStr, sStr, msStr] = match;
+      console.log(`Saw relation ${name} execution time`);
+      this.onPredicateExecutionTime.fire({
+        name: rewritePredicateName(name),
+        executionTime: this.getExecMs(hStr, mStr, sStr, msStr)
+      });
+    });
+  }
+
+  getExecMs(hStr: string, mStr: string, sStr: string, msStr: string): number {
+    let val = 0;
+    if (hStr) {
+      val += 1000 * 60 * 60 * Number(hStr);
     }
-    );
+    if (mStr) {
+      val += 1000 * 60 * Number(mStr);
+    }
+    if (sStr) {
+      val += 1000 * Number(sStr);
+    }
+    if (msStr) {
+      val += Number(msStr);
+    }
+    return val;
   }
 }
 
