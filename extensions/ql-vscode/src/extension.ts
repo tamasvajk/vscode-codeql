@@ -58,6 +58,7 @@ import { compileAndRunQueryAgainstDatabase, tmpDirDisposal } from './run-queries
 import { QLTestAdapterFactory } from './test-adapter';
 import { TestUIService } from './test-ui';
 import { CompareInterfaceManager } from './compare/compare-interface';
+import { FlameGraphInterfaceManager } from './experimental/flamegraph-interface';
 import { gatherQlFiles } from './pure/files';
 import { StructuredLogViewer } from './structuredLogViewer';
 import { LogFile } from './experimental/dataModel';
@@ -396,6 +397,7 @@ async function activateWithInstalledDistribution(
     queryHistoryConfigurationListener,
     showResults,
     showStructuredLog,
+    showFlameGraph,
     async (from: CompletedQuery, to: CompletedQuery) =>
       showResultsForComparison(from, to),
   );
@@ -414,6 +416,13 @@ async function activateWithInstalledDistribution(
   );
   ctx.subscriptions.push(cmpm);
 
+  logger.log('Initializing flame graph panel interface.');
+  const flameGraphManager = new FlameGraphInterfaceManager(
+    ctx,
+    logger
+  );
+  ctx.subscriptions.push(flameGraphManager);
+
   logger.log('Initializing source archive filesystem provider.');
   archiveFilesystemProvider.activate(ctx);
 
@@ -423,6 +432,16 @@ async function activateWithInstalledDistribution(
   ): Promise<void> {
     try {
       await cmpm.showResults(from, to);
+    } catch (e) {
+      helpers.showAndLogErrorMessage(e.message);
+    }
+  }
+
+  async function showFlameGraph(
+    query: CompletedQuery
+  ): Promise<void> {
+    try {
+      await flameGraphManager.showFlameGraph(query);
     } catch (e) {
       helpers.showAndLogErrorMessage(e.message);
     }

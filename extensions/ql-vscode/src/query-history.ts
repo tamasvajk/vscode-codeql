@@ -186,6 +186,7 @@ export class QueryHistoryManager extends DisposableObject {
     private queryHistoryConfigListener: QueryHistoryConfig,
     private selectedCallback: (item: CompletedQuery) => Promise<void>,
     private showStructuredLogCallback: (logFile: LogFile, logFileLocation: string) => Promise<void>,
+    private showFlameGraphCallback: (item: CompletedQuery) => Promise<void>,
     private doCompareCallback: (
       from: CompletedQuery,
       to: CompletedQuery
@@ -255,6 +256,12 @@ export class QueryHistoryManager extends DisposableObject {
       helpers.commandRunner(
         'codeQLQueryHistory.showStructuredQueryLog',
         this.handleShowStructuredQueryLog.bind(this)
+      )
+    );
+    this.push(
+      helpers.commandRunner(
+        'codeQLQueryHistory.showFlameGraph',
+        this.handleShowFlameGraph.bind(this)
       )
     );
     this.push(
@@ -453,6 +460,19 @@ export class QueryHistoryManager extends DisposableObject {
       await this.tryOpenStructuredLog(singleItem.logFileLocation);
     } else {
       helpers.showAndLogWarningMessage('No log file available');
+    }
+  }
+
+  async handleShowFlameGraph(
+    singleItem: CompletedQuery,
+    multiSelect: CompletedQuery[]
+  ) {
+    if (!this.assertSingleQuery(multiSelect)) {
+      return;
+    }
+    if (this.showFlameGraphCallback !== undefined) {
+      const sc = this.showFlameGraphCallback;
+      await sc(singleItem);
     }
   }
 

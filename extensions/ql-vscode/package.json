@@ -336,6 +336,10 @@
         "title": "Show Structured Query Log"
       },
       {
+        "command": "codeQLQueryHistory.showFlameGraph",
+        "title": "Show Flame Graph"
+      },
+      {
         "command": "codeQLQueryHistory.showQueryText",
         "title": "Show Query Text"
       },
@@ -515,6 +519,11 @@
           "when": "view == codeQLQueryHistory"
         },
         {
+          "command": "codeQLQueryHistory.showFlameGraph",
+          "group": "9_qlCommands",
+          "when": "view == codeQLQueryHistory"
+        },
+        {
           "command": "codeQLQueryHistory.showQueryText",
           "group": "9_qlCommands",
           "when": "view == codeQLQueryHistory"
@@ -643,6 +652,10 @@
         },
         {
           "command": "codeQLQueryHistory.showStructuredQueryLog",
+          "when": "false"
+        },
+        {
+          "command": "codeQLQueryHistory.showFlameGraph",
           "when": "false"
         },
         {

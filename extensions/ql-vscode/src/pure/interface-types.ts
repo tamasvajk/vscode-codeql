@@ -1,4 +1,5 @@
 import * as sarif from 'sarif';
+import { FlameGraphNode } from '../experimental/flamegraph_builder';
 import { RawResultSet, ResultRow, ResultSetSchema, Column, ResolvableLocationValue } from './bqrs-cli-types';
 
 /**
@@ -349,4 +350,13 @@ export interface ParsedResultSets {
   selectedTable?: string; // when undefined, means 'show default table'
   resultSetNames: string[];
   resultSet: ResultSet;
+}
+
+export interface FromFlameGraphViewMessage {
+  t: 'flameGraphViewLoaded';
+}
+
+export interface ToFlameGraphViewMessage {
+  t: 'loadFlameGraph';
+  data: FlameGraphNode;
 }

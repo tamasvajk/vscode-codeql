@@ -6,6 +6,7 @@ export const config: webpack.Configuration = {
   entry: {
     resultsView: './src/view/results.tsx',
     compareView: './src/compare/view/Compare.tsx',
+    flameGraphView: './src/experimental/view/FlameGraph.tsx',
   },
   output: {
     path: path.resolve(__dirname, '..', 'out'),

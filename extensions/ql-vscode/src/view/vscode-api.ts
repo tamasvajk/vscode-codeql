@@ -1,10 +1,10 @@
-import { FromCompareViewMessage, FromResultsViewMsg } from '../pure/interface-types';
+import { FromCompareViewMessage, FromFlameGraphViewMessage, FromResultsViewMsg } from '../pure/interface-types';
 
 export interface VsCodeApi {
   /**
    * Post message back to vscode extension.
    */
-  postMessage(msg: FromResultsViewMsg | FromCompareViewMessage): void;
+  postMessage(msg: FromResultsViewMsg | FromCompareViewMessage | FromFlameGraphViewMessage): void;
 }
 
 declare const acquireVsCodeApi: () => VsCodeApi;

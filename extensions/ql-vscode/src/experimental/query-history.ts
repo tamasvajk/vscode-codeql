@@ -78,7 +78,7 @@ export interface LogStream {
 }
 
 // TODO this could just be a Stage
-interface StageEndedEvent {
+export interface StageEndedEvent {
   queryPredicates: string[];
   queryName: string;
   stageNumber: number;
@@ -93,7 +93,7 @@ interface PredicateSizeEvent {
   numTuples?: number;
 }
 
-class Parser implements LogStream {
+export class Parser implements LogStream {
   public readonly onPipeline = new EventStream<PipelineEvaluation>();
   public readonly onPredicateCompletion = new EventStream<PredicateSizeEvent>();
   public readonly onStageEnded = new EventStream<StageEndedEvent>();
@@ -250,4 +250,37 @@ class Parser implements LogStream {
     }
     );
   }
+}
+
+export interface RADependencies {
+  inputVariables: number[];
+  inputRelations: string[];
+}
+
+function allMatches(regexp: RegExp, input: string): RegExpMatchArray[] {
+  if (!regexp.flags.includes('g')) { throw new Error('allMatches requires a RegExp with /g flag'); }
+  let match: RegExpMatchArray | null;
+  const result = [];
+  while ((match = regexp.exec(input)) != null) {
+    result.push(match);
+  }
+  return result;
+}
+
+export function getDependenciesFromRA(racode: string): RADependencies {
+  const inputVariables = new Set<number>();
+  const inputRelations = new Set<string>();
+  const stripped = racode.replace(/"[^"]+"/g, '""');
+  for (const [ref] of allMatches(/(?<!HIGHER-ORDER RELATION |PRIMITIVE |[$@#])\b[a-zA-Z#][\w:#_]+\b(?!\()/g, stripped)) {
+    if (/^([A-Z]+|true|false)$/.test(ref)) { continue; } // Probably an RA keyword
+    if (/^r\d+$/.test(ref)) {
+      inputVariables.add(Number(ref.substring(1)));
+    } else {
+      inputRelations.add(ref);
+    }
+  }
+  return {
+    inputVariables: Array.from(inputVariables),
+    inputRelations: Array.from(inputRelations)
+  };
 }

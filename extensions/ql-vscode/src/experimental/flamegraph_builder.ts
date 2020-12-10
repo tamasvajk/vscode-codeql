@@ -1,3 +1,4 @@
+import * as fs from 'fs-extra';
 import { getDominanceRelation } from './dominators';
 import { streamLinesAsync } from './line_stream';
 import { abbreviateStrings } from './string_set_abbreviation';
@@ -6,8 +7,9 @@ import { getDependenciesFromRA, StageEndedEvent, Parser, LogStream } from './que
 import { getInverse, withoutNulls } from './util';
 import { PipelineEvaluation } from './dataModel';
 
-export function getFlamegraphFromLogStream(stream: NodeJS.ReadableStream): Promise<FlameGraphNode> {
-  return streamLinesAsync(stream).thenNew(Parser).thenNew(FlamegraphBuilder).get().then(x => x.finish());
+export async function readFile(fileLocation: string): Promise<FlameGraphNode> {
+  const stream = fs.createReadStream(fileLocation);
+  return streamLinesAsync(stream).thenNew(Parser).thenNew(FlamegraphBuilder).get().then(builder => builder.finish());
 }
 
 export interface FlameGraphNode {
