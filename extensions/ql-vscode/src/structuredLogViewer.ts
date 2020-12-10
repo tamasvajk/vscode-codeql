@@ -66,6 +66,10 @@ function convertLogFile(logFile: LogFile, logFilePath: string): StructuredLogIte
       children: []
     };
 
+    if (predicate.evaluationTime) {
+      item.label! += ` in ${predicate.evaluationTime}ms`
+    }
+
     if (predicate.evaluations.length === 0) {
       item.label! += ' (from cache)';
     } else if (predicate.evaluations.length === 1) {
