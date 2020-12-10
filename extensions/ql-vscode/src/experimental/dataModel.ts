@@ -7,9 +7,9 @@ export interface LogFile {
 export interface Query {
   name: string;
   stages: Stage[];
-  results?: RaPredicate[];
   raPredicates?: RaPredicate[];    // dict: name -> predicate ?
-  dilPredicates?: DilPredicate[];  // dict: name -> predicate ?
+  //results?: RaPredicate[];         // predicates after lines matching RESULTS IN:
+  //dilPredicates?: DilPredicate[];  // dict: name -> predicate ?
 
   startLine?: SourceLine;          // match: Start query execution
   endLine?: SourceLine;            // match: CSV_IMB_QUERIES: Query,
@@ -26,7 +26,7 @@ export interface Stage {
 
 export interface RaPredicate {
   name: string;
-  dilPredicate?: DilPredicate;
+  //dilPredicate?: DilPredicate;
   evaluations: PipelineEvaluation[];
   // delta: number; ?
   // isExtensional: boolean; ?
@@ -35,15 +35,14 @@ export interface RaPredicate {
   executionCount?: number;  // 168, does this match evaluations.length?
 }
 
-// ??? do we need this?
-export interface DilPredicate {
-  name: string;
-  raPredicates: RaPredicate[];
-  lines: SourceLine[];
-}
+// // ??? do we need this?
+// export interface DilPredicate {
+//   name: string;
+//   raPredicates: RaPredicate[];
+//   lines: SourceLine[];
+// }
 
 export interface PipelineEvaluation {
-  predicateName: string;
   steps: PipelineStep[];
   lines: SourceLine[];
   // delta: number; // TODO iteration numbers for recursive delta predicates
@@ -51,7 +50,7 @@ export interface PipelineEvaluation {
 
 // match: 963     ~0%     {1} r2 = JOIN r1 WITH stmts_10#join_rhs AS R ON FIRST 1 OUTPUT R.<1>
 export interface PipelineStep {
-  evaluation?: PipelineEvaluation; // this should just be the parent, so hopefully not necessary
+  //evaluation?: PipelineEvaluation; // this should just be the parent, so hopefully not necessary
   body: string;                   // JOIN r1 WITH stmts_10#join_rhs AS R ON FIRST 1 OUTPUT R.<1>
   tupleCount: number;             // 963
   duplication: number;            // 0

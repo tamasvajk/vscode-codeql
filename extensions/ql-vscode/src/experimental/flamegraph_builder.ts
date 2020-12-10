@@ -3,9 +3,8 @@ import { getDominanceRelation } from './dominators';
 import { streamLinesAsync } from './line_stream';
 import { abbreviateStrings } from './string_set_abbreviation';
 import { getStronglyConnectedComponents, Scc } from './strongly_connected_components';
-import { getDependenciesFromRA, StageEndedEvent, Parser, LogStream } from './query-history';
+import { getDependenciesFromRA, StageEndedEvent, Parser, LogStream, PipelineEvaluationEvent } from './query-history';
 import { getInverse, withoutNulls } from './util';
-import { PipelineEvaluation } from './dataModel';
 
 export async function readFile(fileLocation: string): Promise<FlameGraphNode> {
   const stream = fs.createReadStream(fileLocation);
@@ -35,10 +34,6 @@ class PredicateNode {
   scc: SccNode | undefined;
 }
 
-function rewritePredicateName(name: string) {
-  return name.replace(/#(cur_delta|prev_delta|prev)/, '');
-}
-
 export class FlamegraphBuilder {
   predicateNodes = new Map<string, PredicateNode>();
   stageNodes: FlameGraphNode[] = [];
@@ -62,14 +57,13 @@ export class FlamegraphBuilder {
     this.predicateNodes.clear();
   }
 
-  private onPipeline(pipeline: PipelineEvaluation) {
-    const name = rewritePredicateName(pipeline.predicateName);
+  private onPipeline(pipeline: PipelineEvaluationEvent) {
+    const name = pipeline.predicateName;
     const node = this.getPredicateNode(name);
     node.seenEvaluation = true;
     for (const step of pipeline.steps) {
       node.tupleCount += step.tupleCount;
       for (let otherRelation of getDependenciesFromRA(step.body).inputRelations) {
-        otherRelation = rewritePredicateName(otherRelation);
         node.dependencies.add(otherRelation);
         this.getPredicateNode(otherRelation).dependents.add(name);
       }

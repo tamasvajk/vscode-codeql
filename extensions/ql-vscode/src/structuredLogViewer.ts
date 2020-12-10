@@ -71,13 +71,13 @@ function convertLogFile(logFile: LogFile, logFilePath: string): StructuredLogIte
       const evaluation = predicate.evaluations[0];
       evaluation.steps.forEach(step => addChild(item, convertPipelineStep(step)));
     } else {
-      predicate.evaluations.forEach(evaluation => addChild(item, convertPipelineEvaluation(evaluation)));
+      predicate.evaluations.forEach(evaluation => addChild(item, convertPipelineEvaluation(predicate.name, evaluation)));
     }
     return item;
   }
-  function convertPipelineEvaluation(evaluation: PipelineEvaluation): StructuredLogItem {
+  function convertPipelineEvaluation(predicateName: string, evaluation: PipelineEvaluation): StructuredLogItem {
     const item: StructuredLogItem = {
-      label: evaluation.predicateName,
+      label: predicateName,
       children: []
     };
     evaluation.steps.forEach(step => addChild(item, convertPipelineStep(step)));

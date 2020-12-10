@@ -1,5 +1,5 @@
 import * as fs from 'fs-extra';
-import { LogFile, PipelineEvaluation, PipelineStep, Query, SourceLine, Stage } from './dataModel';
+import { LogFile, PipelineStep, Query, RaPredicate, SourceLine, Stage } from './dataModel';
 import { EventStream } from './event_stream';
 import { LineStream, MatchEvent, streamLinesAsync } from './line_stream';
 
@@ -11,20 +11,20 @@ export class StructuredQueryLog {
 }
 
 class StructuredLogBuilder {
-  private stageNodes: StageEndedEvent[] = [];
-  private predicateSizes: Map<string, number | undefined> = new Map<string, number | undefined>();
-  private predicateEvaluations: Map<string, PipelineEvaluation[]> = new Map<string, PipelineEvaluation[]>();
+  private queries: Query[] = [];
+  private queryToStages: Map<string, Stage[]> = new Map<string, Stage[]>();
+  private predicates: Map<string, RaPredicate> = new Map<string, RaPredicate>();
   constructor(input: LogStream) {
     input.onPipeline.listen(this.onPipeline.bind(this));
     input.onPredicateCompletion.listen(this.onPredicateSize.bind(this));
     input.onStageEnded.listen(this.onStageEnded.bind(this));
   }
 
-  private onPipeline(event: PipelineEvaluation) {
-    if (!this.predicateEvaluations.has(event.predicateName)) {
-      this.predicateEvaluations.set(event.predicateName, []);
+  private onPipeline(event: PipelineEvaluationEvent) {
+    if (!this.predicates.has(event.predicateName)) {
+      this.predicates.set(event.predicateName, { name: event.predicateName, evaluations: [] });
     }
-    this.predicateEvaluations.get(event.predicateName)!.push(event);
+    this.predicates.get(event.predicateName)!.evaluations.push(event);
   }
 
   private onPredicateSize(event: PredicateSizeEvent) {
@@ -32,46 +32,76 @@ class StructuredLogBuilder {
     // We don't want a later cache hit line (without counts) to overwrite
     // tuple counts that were previously recorded.
     if (event.numTuples !== undefined) {
-      this.predicateSizes.set(event.name, event.numTuples);
+      if (!this.predicates.has(event.name)) {
+        this.predicates.set(event.name, { name: event.name, evaluations: [] });
+      }
+      this.predicates.get(event.name)!.rowCount = event.numTuples;
     }
   }
 
-  private onStageEnded(event: StageEndedEvent) {
-    this.stageNodes.push(event);
+  private onStageEnded(stageNode: StageEndedEvent) {
+    if (!this.queryToStages.has(stageNode.queryName)) {
+      this.queryToStages.set(stageNode.queryName, []);
+    }
+    const stage: Stage = {
+      stageNumber: stageNode.stageNumber,
+      stageTime: stageNode.stageTime,
+      numTuples: stageNode.numTuples,
+      predicates: stageNode.queryPredicates.map(name => {
+        var pred = this.predicates.get(name);
+        if (!pred) {
+          console.warn(`Couldn't find predicate ${name}`);
+          pred = { name, evaluations: [] };
+        }
+        return pred;
+      }),
+      startLine: stageNode.startLine,
+      endLine: stageNode.endLine
+    };
+    this.queryToStages.get(stageNode.queryName)!.push(stage);
+
+    if (stageNode.isQueryEnd) {
+      var predicates = new Map(this.predicates);
+      this.predicates.clear();
+
+      this.matchSubPredicates(predicates);
+
+      // query ended.
+      const query: Query = {
+        name: stageNode.queryName,
+        startLine: stageNode.queryStartLine,
+        endLine: stageNode.endLine,
+        stages: this.queryToStages.get(stageNode.queryName)!.sort((s1, s2) => s1.stageNumber - s2.stageNumber),
+        raPredicates: [...predicates.values()]
+      };
+
+      this.queries.push(query);
+    }
+  }
+
+  matchSubPredicates(predicates: Map<string, RaPredicate>) {
+    for (const predicate of predicates.values()) {
+      for (const evaluation of predicate.evaluations) {
+        for (const step of evaluation.steps) {
+          const dependency = getDependenciesFromRA(step.body);
+          step.subRelations = dependency.inputVariables;
+          step.subPredicates = dependency.inputRelations
+            .map(r => predicates.get(r))
+            .filter(x => x != null) as NonNullable<RaPredicate>[];
+        }
+      }
+    }
   }
 
   getLogFile(): LogFile {
-    const queryToStages: Map<string, Stage[]> = new Map<string, Stage[]>();
-    for (const stageNode of this.stageNodes) {
-      if (!queryToStages.has(stageNode.queryName)) {
-        queryToStages.set(stageNode.queryName, []);
-      }
-      const stage: Stage = {
-        stageNumber: stageNode.stageNumber,
-        stageTime: stageNode.stageTime,
-        numTuples: stageNode.numTuples,
-        predicates: stageNode.queryPredicates.map(name => ({
-          name,
-          rowCount: this.predicateSizes.get(name),
-          // TODO this assumes all the evaluations are from the same stage. I hope that is true.
-          evaluations: this.predicateEvaluations.get(name) || []
-        })),
-        startLine: stageNode.startLine,
-        endLine: stageNode.endLine
-      };
-      queryToStages.get(stageNode.queryName)!.push(stage);
-    }
-    const queries: Query[] = [];
-    for (const [queryName, stages] of queryToStages.entries()) {
-      // Stages are likely to be in order, but sort them to be consistent.
-      queries.push({ name: queryName, stages: stages.sort((s1, s2) => s1.stageNumber - s2.stageNumber) });
-    }
-    return { queries };
+    return {
+      queries: this.queries
+    };
   }
 }
 
 export interface LogStream {
-  onPipeline: EventStream<PipelineEvaluation>;
+  onPipeline: EventStream<PipelineEvaluationEvent>;
   onPredicateCompletion: EventStream<PredicateSizeEvent>;
   onStageEnded: EventStream<StageEndedEvent>;
   end: EventStream<void>;
@@ -86,6 +116,12 @@ export interface StageEndedEvent {
   numTuples: number;
   startLine?: SourceLine;
   endLine: SourceLine;
+  isQueryEnd: boolean;
+  queryStartLine?: SourceLine;
+}
+
+export interface QueryStartEvent {
+  startLine: SourceLine;
 }
 
 interface PredicateSizeEvent {
@@ -93,8 +129,17 @@ interface PredicateSizeEvent {
   numTuples?: number;
 }
 
+export interface PipelineEvaluationEvent {
+  predicateName: string;
+  steps: PipelineStep[];
+  lines: SourceLine[];
+  // delta: number; // TODO iteration numbers for recursive delta predicates
+}
+
 export class Parser implements LogStream {
-  public readonly onPipeline = new EventStream<PipelineEvaluation>();
+  public readonly onQueryStarting = new EventStream<QueryStartEvent>();
+  public readonly onQueryEnded = new EventStream<void>();
+  public readonly onPipeline = new EventStream<PipelineEvaluationEvent>();
   public readonly onPredicateCompletion = new EventStream<PredicateSizeEvent>();
   public readonly onStageEnded = new EventStream<StageEndedEvent>();
   public readonly end: EventStream<void>;
@@ -114,6 +159,13 @@ export class Parser implements LogStream {
 
     let seenCsvImbQueriesHeader = false;
     let stageStartLine: SourceLine | undefined = undefined;
+    let queryStartLine: SourceLine | undefined = undefined;
+
+    input.on(/\s*Start query execution/, ({ match, lineNumber }) => {
+      const [wholeLine,] = match;
+      console.log('Found query starting on line ' + lineNumber);
+      queryStartLine = { text: wholeLine, lineNumber: lineNumber || 0 };
+    });
 
     // Start of a stage
     input.on(/\s*\[STAGING\]\s*.*/, ({ match, lineNumber }) => {
@@ -152,7 +204,9 @@ export class Parser implements LogStream {
         stageTime: Number.parseFloat(stageTime),
         numTuples: Number.parseInt(numTuples),
         startLine,
-        endLine
+        endLine,
+        isQueryEnd: entryType.toLowerCase() === 'query',
+        queryStartLine: queryStartLine
       });
     });
 
@@ -167,7 +221,7 @@ export class Parser implements LogStream {
       const [, name, arity] = match;
       console.log(`Saw Starting to evaluate for ${name} with arity ${arity}`);
       this.seenPredicateEvaluation = true;
-      currentPredicateName = name;
+      currentPredicateName = rewritePredicateName(name);
       currentPredicateLine = lineNumber;
       // currentRawLines.push(match.input!);
     });
@@ -178,7 +232,7 @@ export class Parser implements LogStream {
       const [, name, arity] = match;
       console.log(`Saw tuple count logs for ${name} with arity ${arity}`);
       this.seenPredicateEvaluation = true;
-      currentPredicateName = name;
+      currentPredicateName = rewritePredicateName(name);
       currentPredicateLine = lineNumber;
       // currentRawLines.push(match.input!);
     });
@@ -188,7 +242,7 @@ export class Parser implements LogStream {
       const [, name, numTuples] = input.match;
       console.log(`Saw complete relation ${name} with ${numTuples} tuples`);
       this.onPredicateCompletion.fire({
-        name,
+        name: rewritePredicateName(name),
         numTuples: Number(numTuples),
       });
     };
@@ -276,11 +330,15 @@ export function getDependenciesFromRA(racode: string): RADependencies {
     if (/^r\d+$/.test(ref)) {
       inputVariables.add(Number(ref.substring(1)));
     } else {
-      inputRelations.add(ref);
+      inputRelations.add(rewritePredicateName(ref));
     }
   }
   return {
     inputVariables: Array.from(inputVariables),
     inputRelations: Array.from(inputRelations)
   };
+}
+
+export function rewritePredicateName(name: string): string {
+  return name.replace(/#(cur_delta|prev_delta|prev)/, ''); // todo: do we need to remove these endings too: "@staged_ext", "_delta"?
 }
