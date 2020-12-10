@@ -27,7 +27,7 @@ export interface Stage {
 export interface RaPredicate {
   name: string;
   dilPredicate?: DilPredicate;
-  evaluations: Evaluation[];
+  evaluations: PipelineEvaluation[];
   // delta: number; ?
   // isExtensional: boolean; ?
   rowCount?: number;
@@ -42,16 +42,16 @@ export interface DilPredicate {
   lines: SourceLine[];
 }
 
-export interface Evaluation {
-  predicate: RaPredicate;
+export interface PipelineEvaluation {
+  predicateName: string;
   steps: PipelineStep[];
   lines: SourceLine[];
-  // delta: number; ?
+  // delta: number; // TODO iteration numbers for recursive delta predicates
 }
 
 // match: 963     ~0%     {1} r2 = JOIN r1 WITH stmts_10#join_rhs AS R ON FIRST 1 OUTPUT R.<1>
 export interface PipelineStep {
-  evaluation: Evaluation;
+  evaluation?: PipelineEvaluation; // this should just be the parent, so hopefully not necessary
   body: string;                   // JOIN r1 WITH stmts_10#join_rhs AS R ON FIRST 1 OUTPUT R.<1>
   tupleCount: number;             // 963
   duplication: number;            // 0

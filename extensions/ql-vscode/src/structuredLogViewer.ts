@@ -14,7 +14,7 @@ import * as path from 'path';
 import { showLocation } from './interface-utils';
 import { commandRunner } from './helpers';
 import { DisposableObject } from './vscode-utils/disposable-object';
-import { LogFile, Query, RaPredicate, Stage } from './experimental/dataModel';
+import { LogFile, PipelineEvaluation, PipelineStep, Query, RaPredicate, Stage } from './experimental/dataModel';
 
 export interface StructuredLogItem {
   label?: string;
@@ -36,10 +36,7 @@ function convertLogFile(logFile: LogFile, logFilePath: string): StructuredLogIte
   function addChild(parent: StructuredLogItem, child: StructuredLogItem) {
     parent.children.push({ ...child, parent: parent });
   }
-
-  for (const query of logFile.queries) {
-    addChild(item, convertQuery(query));
-  }
+  logFile.queries.forEach(query => addChild(item, convertQuery(query)));
   return item;
 
   function convertQuery(query: Query): StructuredLogItem {
@@ -47,9 +44,7 @@ function convertLogFile(logFile: LogFile, logFilePath: string): StructuredLogIte
       label: 'Query ' + query.name,
       children: []
     };
-    for (const stage of query.stages) {
-      addChild(item, convertStage(stage));
-    }
+    query.stages.forEach(stage => addChild(item, convertStage(stage)));
     return item;
   }
   function convertStage(stage: Stage): StructuredLogItem {
@@ -58,16 +53,34 @@ function convertLogFile(logFile: LogFile, logFilePath: string): StructuredLogIte
       label: `Stage ${stage.stageNumber} - ${stage.numTuples} tuples in ${stage.stageTime}s ${lines}`,
       children: []
     };
-    for (const predicate of stage.predicates) {
-      addChild(item, convertPredicate(predicate));
-    }
+    stage.predicates.forEach(predicate => addChild(item, convertPredicate(predicate)));
     return item;
   }
+  function getTupleCountLabelSuffix(tupleCount?: number) {
+    return tupleCount === undefined ? '' : ` - ${tupleCount} tuples`;
+  }
   function convertPredicate(predicate: RaPredicate): StructuredLogItem {
-    return {
-      label: predicate.name,
+    const item: StructuredLogItem = {
+      label: predicate.name + getTupleCountLabelSuffix(predicate.rowCount),
       children: []
     };
+    predicate.evaluations.forEach(evaluation => addChild(item, convertPipelineEvaluation(evaluation)));
+    return item;
+  }
+  function convertPipelineEvaluation(evaluation: PipelineEvaluation): StructuredLogItem {
+    const item: StructuredLogItem = {
+      label: evaluation.predicateName,
+      children: []
+    };
+    evaluation.steps.forEach(step => addChild(item, convertPipelineStep(step)));
+    return item;
+  }
+  function convertPipelineStep(step: PipelineStep): StructuredLogItem {
+    const item: StructuredLogItem = {
+      label: step.body + getTupleCountLabelSuffix(step.tupleCount),
+      children: []
+    };
+    return item;
   }
 }
 

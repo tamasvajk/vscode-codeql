@@ -56,7 +56,7 @@ export class LineStream {
   }
 }
 
-interface MatchEvent {
+export interface MatchEvent {
   match: RegExpMatchArray;
   lineNumber?: number;
 }
