@@ -122,7 +122,7 @@ class Parser implements LogStream {
       stageStartLine = { text: wholeLine, lineNumber: lineNumber || 0 };
     });
 
-    // End of a stage
+    // End of a stage (or query, but ignore those for now)
     input.on(/CSV_IMB_QUERIES:\s*(.*)/, ({ match, lineNumber }) => {
       const [wholeLine, row] = match;
       // The first occurrence is the header
@@ -131,13 +131,18 @@ class Parser implements LogStream {
         seenCsvImbQueriesHeader = true;
         return;
       }
-      console.log(`Found stage ending on line ${lineNumber} ${stageStartLine ? 'with' : 'without'} a start line`, row);
-      const startLine = stageStartLine;
-      stageStartLine = undefined;
 
       // Process the row data
       const rowEntries = row.split(',');
-      const [, queryPredicates, queryName, stageNumber, , stageTime, numTuples,] = rowEntries;
+      const [entryType, queryPredicates, queryName, stageNumber, , stageTime, numTuples,] = rowEntries;
+      if (entryType.toLowerCase() === 'query') {
+        console.log(`Found query completion on line ${lineNumber}`, row);
+        return;
+      }
+      console.log(`Found stage completion on line ${lineNumber} ${stageStartLine ? 'with' : 'without'} a start line`, row);
+      const startLine = stageStartLine;
+      stageStartLine = undefined;
+
       const endLine: SourceLine = { text: wholeLine, lineNumber: lineNumber || 0 };
       this.onStageEnded.fire({
         queryName,
