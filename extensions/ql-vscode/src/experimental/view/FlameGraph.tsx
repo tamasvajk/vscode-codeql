@@ -1,11 +1,12 @@
 import * as React from 'react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import * as Rdom from 'react-dom';
 
 import {
   ToFlameGraphViewMessage,
 } from '../../pure/interface-types';
 import { vscode } from '../../view/vscode-api';
+import { FlameGraphDraw } from './FlameGraphDraw';
 
 const emptyMessage: ToFlameGraphViewMessage = {
   t: 'loadFlameGraph',
@@ -22,6 +23,7 @@ export function FlameGraph(_: {}): JSX.Element {
   );
 
   // const message = logData.data.name || 'Empty data';
+  const d3container = useRef(null);
 
   useEffect(() => {
     window.addEventListener('message', (evt: MessageEvent) => {
@@ -36,19 +38,16 @@ export function FlameGraph(_: {}): JSX.Element {
         console.error(`Invalid event origin for flame graph view ${evt.origin}`);
       }
     });
+    if (!(logData && d3container.current)) {
+      return;
+    }
   });
+
   if (!logData) {
     return <div>Waiting for graph to load.</div>;
   }
-
   return (
-    <>
-      <div className="vscode-codeql__flame-graph-header">
-        <div className="vscode-codeql__flame-graph-header-item">
-          I have a flame graph named {logData.data.name}!
-        </div>
-      </div>
-    </>
+    <FlameGraphDraw {...logData.data} />
   );
 }
 
