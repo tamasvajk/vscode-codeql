@@ -31,6 +31,7 @@ class StructuredLogBuilder {
         stageTime: stageNode.stageTime,
         numTuples: stageNode.numTuples,
         predicates: stageNode.queryPredicates.map(name => ({ name, evaluations: [] })),
+        startLine: stageNode.startLine,
         endLine: stageNode.endLine
       };
       queryToStages.get(stageNode.queryName)!.push(stage);
@@ -49,6 +50,7 @@ export interface LogStream {
   end: EventStream<void>;
 }
 
+// TODO this could just be a Stage
 interface StageEndedEvent {
   queryPredicates: string[];
   queryName: string;
@@ -67,25 +69,39 @@ class Parser implements LogStream {
     this.end = input.end;
 
     let seenCsvImbQueriesHeader = false;
-    input.on(/CSV_IMB_QUERIES:\s*(.*)/, (matchEvent) => {
-      const [wholeLine, row] = matchEvent.match;
-      console.log(row);
+    let stageStartLine: SourceLine | undefined = undefined;
+
+    // Start of a stage
+    input.on(/\s*\[STAGING\]\s*.*/, ({ match, lineNumber }) => {
+      const [wholeLine,] = match;
+      console.log('Found stage starting on line ' + lineNumber);
+      stageStartLine = { text: wholeLine, lineNumber: lineNumber || 0 };
+    });
+
+    // End of a stage
+    input.on(/CSV_IMB_QUERIES:\s*(.*)/, ({ match, lineNumber }) => {
+      const [wholeLine, row] = match;
       // The first occurrence is the header
       // Query type,Query predicate,Query name,Stage,Success,Time,Number of results,Cumulative time in query
       if (!seenCsvImbQueriesHeader) {
         seenCsvImbQueriesHeader = true;
         return;
       }
+      console.log(`Found stage ending on line ${lineNumber} ${stageStartLine ? 'with' : 'without'} a start line`, row);
+      const startLine = stageStartLine;
+      stageStartLine = undefined;
+
       // Process the row data
       const rowEntries = row.split(',');
       const [, queryPredicates, queryName, stageNumber, , stageTime, numTuples,] = rowEntries;
-      const endLine: SourceLine = { text: wholeLine, lineNumber: matchEvent.lineNumber || 0 };
+      const endLine: SourceLine = { text: wholeLine, lineNumber: lineNumber || 0 };
       this.onStageEnded.fire({
         queryName,
         queryPredicates: queryPredicates.split(' '),
         stageNumber: Number.parseInt(stageNumber),
         stageTime: Number.parseFloat(stageTime),
         numTuples: Number.parseInt(numTuples),
+        startLine,
         endLine
       });
     });
