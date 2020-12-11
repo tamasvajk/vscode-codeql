@@ -8,13 +8,17 @@ import {
   TreeItem,
   TreeView,
   Location,
+  Uri,
+  Position,
+  Range,
 } from 'vscode';
 import * as path from 'path';
 
 import { showLocation } from './interface-utils';
 import { commandRunner } from './helpers';
 import { DisposableObject } from './vscode-utils/disposable-object';
-import { LogFile, PipelineEvaluation, PipelineStep, Query, RaPredicate, Stage } from './experimental/dataModel';
+import { LogFile, PipelineEvaluation, PipelineStep, Query, RaPredicate, SourceLine, Stage } from './experimental/dataModel';
+import { logger } from './logging';
 
 export interface StructuredLogItem {
   label?: string;
@@ -29,6 +33,17 @@ export interface ChildStructuredLogItem extends StructuredLogItem {
 
 /** Parser visitor to convert a `LogFile` from the data model into a tree with parent and child references. */
 function convertLogFile(logFile: LogFile, logFilePath: string): StructuredLogItem {
+
+  /** Helper function to convert locations. */
+  function getLocation(startLine?: SourceLine, endLine?: SourceLine): Location | undefined {
+    if (startLine && endLine) {
+      // VS Code positions are 0-based, but the locations from the parser are 1-based.
+      const range = new Range(new Position(startLine.lineNumber - 1, 0), new Position(endLine.lineNumber - 1, 0));
+      return new Location(Uri.file(logFilePath), range);
+    } else {
+      return undefined;
+    }
+  }
   const item: StructuredLogItem = {
     label: `Structured log for ${path.basename(logFilePath)}`,
     children: []
@@ -43,6 +58,7 @@ function convertLogFile(logFile: LogFile, logFilePath: string): StructuredLogIte
   function convertQuery(query: Query): StructuredLogItem {
     const item: StructuredLogItem = {
       label: 'Query ' + query.name,
+      location: getLocation(query.startLine, query.endLine),
       children: []
     };
     query.stages.forEach(stage => addChild(item, convertStage(stage)));
@@ -52,6 +68,7 @@ function convertLogFile(logFile: LogFile, logFilePath: string): StructuredLogIte
     const lines = (stage.startLine && stage.endLine) ? `(lines ${stage.startLine.lineNumber}-${stage.endLine.lineNumber})` : '';
     const item: StructuredLogItem = {
       label: `Stage ${stage.stageNumber} - ${stage.numTuples} tuples in ${stage.stageTime}s ${lines}`,
+      location: getLocation(stage.startLine, stage.endLine),
       children: []
     };
     stage.predicates.forEach(predicate => addChild(item, convertPredicate(predicate)));
@@ -67,7 +84,7 @@ function convertLogFile(logFile: LogFile, logFilePath: string): StructuredLogIte
     };
 
     if (predicate.evaluationTime) {
-      item.label! += ` in ${predicate.evaluationTime}ms`
+      item.label! += ` in ${predicate.evaluationTime}ms`;
     }
 
     if (predicate.evaluations.length === 0) {
@@ -85,6 +102,7 @@ function convertLogFile(logFile: LogFile, logFilePath: string): StructuredLogIte
   function convertPipelineEvaluation(label: string, evaluation: PipelineEvaluation): StructuredLogItem {
     const item: StructuredLogItem = {
       label: label,
+      location: getLocation(evaluation.lines[0], evaluation.lines[-1]),
       children: []
     };
     evaluation.steps.forEach(step => addChild(item, convertPipelineStep(step)));
@@ -93,6 +111,7 @@ function convertLogFile(logFile: LogFile, logFilePath: string): StructuredLogIte
   function convertPipelineStep(step: PipelineStep): StructuredLogItem {
     const item: StructuredLogItem = {
       label: `(${step.tupleCount} tuples) r${step.target}`,
+      location: getLocation(step.line, step.line),
       description: `= ${step.body}`,
       children: []
     };
