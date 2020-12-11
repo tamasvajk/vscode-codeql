@@ -16,8 +16,8 @@ export function FlameGraphDraw(props: FlameGraphNode): JSX.Element {
 
     const svg = select(d3container.current);
 
-    const chart = d3f.flamegraph()
-      .width(document.body.clientWidth - 400);
+    const chart = d3f.flamegraph();
+    // .width(1000);
     // .onClick((event: D3Node) => {
     // focusedNode = event.data;
     // showDetailsForNode(focusedNode);
@@ -29,8 +29,10 @@ export function FlameGraphDraw(props: FlameGraphNode): JSX.Element {
 
   return (
     <>
-      <div className="vscode-codeql__flame-graph-header" style={{ textAlign: 'center' }}>
-        <svg className="d3-component" width={600} height={400} ref={d3container} />
+      <div className="vscode-codeql__flame-graph-header" style={{ textAlign: 'center', overflowY: 'scroll' }}>
+        <div style={{ width: 1000, height: 1000 }}>
+          <svg className="d3-component" width={'90%'} height={'auto'} ref={d3container} />
+        </div>
       </div>
     </>
   );

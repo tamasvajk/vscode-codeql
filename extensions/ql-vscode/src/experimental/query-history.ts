@@ -32,7 +32,7 @@ class StructuredLogBuilder {
     if (!this.predicates.has(event.name)) {
       this.predicates.set(event.name, { name: event.name, evaluations: [] });
     }
-    const predicate = this.predicates.get(event.name)!
+    const predicate = this.predicates.get(event.name)!;
     predicate.evaluationTime = event.evaluationTime;
     predicate.evaluationCount = event.evaluationCount;
   }
@@ -58,7 +58,7 @@ class StructuredLogBuilder {
       stageTime: stageNode.stageTime,
       numTuples: stageNode.numTuples,
       predicates: stageNode.queryPredicates.map(name => {
-        var pred = this.predicates.get(name);
+        let pred = this.predicates.get(name);
         if (!pred) {
           console.error(`Couldn't find predicate ${name}`);
           pred = { name, evaluations: [] };
@@ -71,7 +71,7 @@ class StructuredLogBuilder {
     this.queryToStages.get(stageNode.queryName)!.push(stage);
 
     if (stageNode.isQueryEnd) {
-      var predicates = new Map(this.predicates);
+      const predicates = new Map(this.predicates);
       this.predicates.clear();
 
       this.matchSubPredicates(predicates);
@@ -319,7 +319,7 @@ export class Parser implements LogStream {
     });
 
     input.on(/^\t([A-Za-z.0-9]+)-(\d+):(.*) \.+ (?:(\d+(?:\.\d+)?)h)?(?:(\d+(?:\.\d+)?)m)?(?:(\d+(?:\.\d+)?)s)?(?:(\d+(?:\.\d+)?)ms)?\b(?: \(.*?(\d+).*\))?$/, ({ match }) => {
-      const [, query, stageStr, name, hStr, mStr, sStr, msStr, evalCountStr] = match;
+      const [, /* query */, /* stageStr */, name, hStr, mStr, sStr, msStr, evalCountStr] = match;
       console.log(`Saw relation ${name} execution time`);
       this.onPredicateEvaluated.fire({
         name: rewritePredicateName(name),
