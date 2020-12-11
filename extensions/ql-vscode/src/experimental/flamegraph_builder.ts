@@ -63,7 +63,7 @@ export class FlamegraphBuilder {
     node.seenEvaluation = true;
     for (const step of pipeline.steps) {
       node.tupleCount += step.tupleCount;
-      for (let otherRelation of getDependenciesFromRA(step.body).inputRelations) {
+      for (const otherRelation of getDependenciesFromRA(step.body).inputRelations) {
         node.dependencies.add(otherRelation);
         this.getPredicateNode(otherRelation).dependents.add(name);
       }
