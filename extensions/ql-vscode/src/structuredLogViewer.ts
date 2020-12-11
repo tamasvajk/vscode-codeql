@@ -61,6 +61,15 @@ function convertLogFile(logFile: LogFile, logFilePath: string): StructuredLogIte
       location: getLocation(query.startLine, query.endLine),
       children: []
     };
+    // Predicates without a known stage go into the final stage
+    const stagedPredicates = new Set<RaPredicate>();
+    query.stages.forEach(stage => stage.predicates.forEach(p => stagedPredicates.add(p)));
+    query.raPredicates?.forEach(p => {
+      if (!stagedPredicates.has(p)) {
+        logger.log('Adding unstaged predicate ' + p.name + ' to final stage');
+        query.stages[query.stages.length - 1].predicates.push(p);
+      }
+    });
     query.stages.forEach(stage => addChild(item, convertStage(stage)));
     return item;
   }
